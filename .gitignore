@@ -1,13 +1,16 @@
 __pycache__/
 *.pyc
+.pytest_cache/
+
 .env
 .venv/
 venv/
 
 data/raw/
-data/processed/*.csv
+data/processed/
 
 outputs/checkpoints/
+outputs/segmented_lines/
 outputs/*.pth
 outputs/*.pt
 

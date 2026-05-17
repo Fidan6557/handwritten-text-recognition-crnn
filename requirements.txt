@@ -11,3 +11,5 @@ PyYAML
 streamlit
 editdistance
 kaggle
+pyarrow
+pytest
