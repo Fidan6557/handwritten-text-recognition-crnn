@@ -13,20 +13,20 @@ class IAMLineDataset(Dataset):
     def __init__(self, csv_path, char_to_idx, image_width=512, image_height=64):
         self.data = pd.read_csv(csv_path)
         self.char_to_idx = char_to_idx
-        self.image_width = image_width  
+        self.image_width = image_width
         self.image_height = image_height
 
     def __len__(self):
         return len(self.data)
-    
+
     def encode_text(self, text):
         return [
             self.char_to_idx[char]
             for char in str(text)
             if char in self.char_to_idx
         ]
-    
-    def __getitem__(Self, idx):
+
+    def __getitem__(self, idx):
         row = self.data.iloc[idx]
 
         image = preprocess_handwritten_image(
@@ -46,11 +46,12 @@ class IAMLineDataset(Dataset):
             "label_length": len(label),
             "text": text,
         }
-    
+
 
 def collate_fn(batch):
     """
     Custom collate function required for CTC loss.
+
     It stacks images but concatenates labels into one long tensor.
     """
 
