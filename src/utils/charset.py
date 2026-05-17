@@ -1,7 +1,7 @@
 import json
-from pathlib import Path 
+from pathlib import Path
 
-import pandas as pd 
+import pandas as pd
 
 
 BLANK_TOKEN = "<blank>"
@@ -22,7 +22,7 @@ def build_charset(csv_paths):
         for text in df["text"].astype(str):
             for char in text:
                 characters.add(char)
-            
+
     characters = sorted(characters)
 
     char_to_idx = {BLANK_TOKEN: 0}
@@ -37,7 +37,7 @@ def build_charset(csv_paths):
 
 def save_charset(char_to_idx, path):
     """
-    Save character vocabulary to JSON
+    Save character vocabulary to JSON.
     """
 
     path = Path(path)
@@ -45,7 +45,6 @@ def save_charset(char_to_idx, path):
 
     with open(path, "w", encoding="utf-8") as file:
         json.dump(char_to_idx, file, ensure_ascii=False, indent=4)
-
 
 
 def load_charset(path):
@@ -56,6 +55,6 @@ def load_charset(path):
     with open(path, "r", encoding="utf-8") as file:
         char_to_idx = json.load(file)
 
-        idx_to_char = {idx: char for char, idx in char_to_idx.items()}
-    
+    idx_to_char = {idx: char for char, idx in char_to_idx.items()}
+
     return char_to_idx, idx_to_char
