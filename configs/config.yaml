@@ -1,0 +1,27 @@
+project:
+  name: handwritten-text-recognition-crnn
+  seed: 42
+
+data:
+  raw_dir: data/raw/iam
+  processed_dir: data/processed
+  image_height: 64
+  image_width: 512
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+
+model:
+  hidden_size: 256
+  num_lstm_layers: 2
+  dropout: 0.3
+
+training:
+  batch_size: 16
+  epochs: 30
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+
+paths:
+  checkpoint_dir: outputs/checkpoints
+  best_model: outputs/checkpoints/best_crnn.pth
