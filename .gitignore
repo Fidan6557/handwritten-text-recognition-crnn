@@ -1,18 +1,41 @@
+# Python
 __pycache__/
 *.pyc
-.pytest_cache/
+*.pyo
+*.pyd
+.Python
 
+# Virtual environments
 .env
 .venv/
 venv/
+env/
 
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Dataset
 data/raw/
 data/processed/
 
+# Model outputs
 outputs/checkpoints/
 outputs/segmented_lines/
+outputs/logs/
 outputs/*.pth
 outputs/*.pt
 
+# Jupyter
 .ipynb_checkpoints/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Ruff
+.ruff_cache/
+
+# Kaggle
+kaggle.json
