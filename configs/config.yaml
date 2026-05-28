@@ -21,7 +21,11 @@ training:
   epochs: 30
   learning_rate: 0.0003
   weight_decay: 0.00001
+  scheduler: reduce_on_plateau
 
 paths:
   checkpoint_dir: outputs/checkpoints
   best_model: outputs/checkpoints/best_crnn.pth
+  charset: outputs/charset.json
+  logs_dir: outputs/logs
+  plots_dir: outputs/plots
