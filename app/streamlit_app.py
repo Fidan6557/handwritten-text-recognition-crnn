@@ -41,7 +41,7 @@ if uploaded_file is not None:
     st.image(
         image,
         caption="Uploaded Image",
-        use_column_width=True,
+        use_container_width=True,
     )
 
     if not MODEL_PATH.exists() or not CHARSET_PATH.exists():
@@ -74,7 +74,7 @@ if uploaded_file is not None:
                 st.image(
                     line_image,
                     caption=f"Line {index}",
-                    use_column_width=True,
+                    use_container_width=True,
                 )
 
             with st.spinner("Recognizing full page text..."):
