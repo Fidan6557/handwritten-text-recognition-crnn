@@ -19,6 +19,7 @@ The project demonstrates:
 - Alignment-free training with CTC Loss
 - CTC decoding
 - OCR evaluation using CER and WER
+- Full-page line segmentation
 - Streamlit-based demo interface
 
 ---
@@ -53,10 +54,13 @@ Predicted Text
 - BiLSTM layers for sequence understanding
 - CTC Loss for alignment-free OCR training
 - Greedy CTC decoder
-- Character Error Rate evaluation
-- Word Error Rate evaluation
-- Streamlit application for image upload and preview
-- Modular and reproducible project structure
+- Character Error Rate (CER) and Word Error Rate (WER) evaluation
+- Learning rate scheduling (ReduceLROnPlateau or CosineAnnealing)
+- CSV-based training metrics logger
+- Training curve and prediction sample visualization
+- Full-page OCR with automatic line segmentation
+- Streamlit application for image upload and inference
+- Modular, config-driven, and reproducible project structure
 
 ---
 
@@ -66,12 +70,13 @@ Predicted Text
 |---|---|
 | Python | Main programming language |
 | PyTorch | Deep learning framework |
-| OpenCV | Image preprocessing |
+| OpenCV | Image preprocessing and segmentation |
 | Pandas | Dataset handling |
 | NumPy | Numerical operations |
 | Streamlit | Demo application |
 | Matplotlib | Visualization |
-| CTC Loss | Sequence alignment-free training |
+| PyYAML | Config file parsing |
+| editdistance | CER / WER metric computation |
 
 ---
 
@@ -81,48 +86,94 @@ Predicted Text
 handwritten-text-recognition-crnn/
 │
 ├── app/
-│   └── streamlit_app.py
+│   └── streamlit_app.py             # Streamlit demo interface
 │
 ├── configs/
-│   └── config.yaml
+│   └── config.yaml                  # Centralized project configuration
+│
+├── data/
+│   ├── raw/iam/                     # Raw IAM dataset (not tracked by Git)
+│   └── processed/                   # Preprocessed train/val/test CSVs
+│
+├── outputs/
+│   ├── checkpoints/                 # Saved model weights (not tracked by Git)
+│   ├── logs/                        # Training CSV logs (not tracked by Git)
+│   └── plots/                       # Training curve plots
+│
+├── sample_images/
+│   └── page_sample.jpg              # Example input image
+│
+├── scripts/
+│   ├── download_hf_iam.py           # Download IAM via Hugging Face Hub
+│   ├── download_iam_kaggle.py       # Download IAM via Kaggle CLI
+│   └── run_inference_demo.py        # Quick CLI inference demo
 │
 ├── src/
 │   ├── data/
-│   │   ├── dataset.py
-│   │   ├── preprocessing.py
-│   │   └── prepare_iam.py
+│   │   ├── dataset.py               # PyTorch Dataset and collate_fn
+│   │   ├── prepare_hf_iam.py        # Prepare IAM data from Hugging Face
+│   │   ├── prepare_iam.py           # Prepare IAM data from local files
+│   │   ├── preprocessing.py         # Image preprocessing pipeline
+│   │   └── segmentation.py          # Full-page line segmentation
 │   │
 │   ├── inference/
-│   │   ├── decoder.py
-│   │   └── predict.py
+│   │   ├── decoder.py               # Greedy CTC decoder
+│   │   ├── predict.py               # Single-line OCR inference
+│   │   └── predict_page.py          # Full-page OCR inference
 │   │
 │   ├── models/
-│   │   └── crnn.py
+│   │   └── crnn.py                  # CRNN model definition
 │   │
 │   ├── training/
-│   │   ├── train.py
-│   │   └── evaluate.py
+│   │   ├── evaluate.py              # Validation loop with CER/WER
+│   │   ├── scheduler.py             # LR scheduler builder
+│   │   └── train.py                 # Main training script
 │   │
-│   └── utils/
-│       ├── charset.py
-│       ├── metrics.py
-│       └── seed.py
+│   ├── utils/
+│   │   ├── charset.py               # Character vocabulary builder
+│   │   ├── logger.py                # CSV metrics logger
+│   │   ├── metrics.py               # CER and WER functions
+│   │   └── seed.py                  # Reproducibility seed setter
+│   │
+│   └── visualization/
+│       └── plot_metrics.py          # Training curve and prediction plots
 │
 ├── tests/
-│   └── test_decoder.py
+│   ├── test_charset.py
+│   ├── test_decoder.py
+│   ├── test_metrics.py
+│   ├── test_model.py
+│   └── test_preprocessing.py
 │
-├── requirements.txt
+├── .gitignore
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── LICENSE
+├── Makefile
+├── pyproject.toml
 ├── README.md
-└── .gitignore
+└── requirements.txt
 ```
 
 ---
 
 ## Dataset
 
-This project is designed for the IAM Handwriting Dataset.
+This project is designed for the [IAM Handwriting Dataset](https://fki.tic.heia-fr.ch/databases/iam-handwriting-database).
 
-The recommended format after preprocessing is:
+### Option 1 — Download via Hugging Face Hub
+
+```bash
+make prepare-hf-iam
+```
+
+### Option 2 — Download via Kaggle CLI
+
+```bash
+make prepare-iam
+```
+
+The expected CSV format after preprocessing:
 
 ```csv
 image_path,text
@@ -130,7 +181,7 @@ data/raw/iam/lines/a01/a01-000u/a01-000u-00.png,A MOVE to stop Mr. Gaitskell fro
 data/raw/iam/lines/a01/a01-000u/a01-000u-01.png,nominating any more Labour life Peers
 ```
 
-The model currently focuses on line-level OCR. Full-page OCR and automatic line segmentation can be added as future improvements.
+The model focuses on line-level OCR. Full-page OCR with automatic line segmentation is also supported.
 
 ---
 
@@ -147,12 +198,7 @@ Create and activate a virtual environment:
 
 ```bash
 python -m venv .venv
-```
-
-On Windows:
-
-```bash
-.venv\Scripts\activate
+source .venv/bin/activate       # On Windows: .venv\Scripts\activate
 ```
 
 Install dependencies:
@@ -163,106 +209,142 @@ pip install -r requirements.txt
 
 ---
 
+## Training
+
+### Quick start with defaults
+
+```bash
+make train
+```
+
+### With a custom config or scheduler
+
+```bash
+python -m src.training.train --config configs/config.yaml --scheduler cosine
+```
+
+Available scheduler options: `reduce_on_plateau` (default), `cosine`.
+
+Training will:
+1. Read all hyperparameters from `configs/config.yaml`
+2. Build the character vocabulary and save it to `outputs/charset.json`
+3. Log metrics per epoch to `outputs/logs/train_<timestamp>.csv`
+4. Save the best checkpoint to `outputs/checkpoints/best_crnn.pth`
+
+---
+
+## Evaluation
+
+Evaluation runs automatically after each training epoch and reports:
+
+| Metric | Meaning |
+|---|---|
+| CER | Character Error Rate — lower is better |
+| WER | Word Error Rate — lower is better |
+
+To plot training curves after training:
+
+```bash
+make plot-metrics
+```
+
+---
+
+## Inference
+
+### Single line image
+
+```bash
+make predict-line
+# or
+python -m src.inference.predict
+```
+
+### Full page image
+
+```bash
+make predict-page
+# or
+python -m src.inference.predict_page --image sample_images/page_sample.jpg --save-lines
+```
+
+### Quick CLI demo
+
+```bash
+python scripts/run_inference_demo.py --image sample_images/page_sample.jpg
+```
+
+---
+
 ## Run Streamlit Demo
 
 ```bash
-streamlit run app/streamlit_app.py
+make demo
 ```
 
-The current demo supports image upload and preview.  
-Full OCR prediction becomes available after training the model and saving the checkpoint.
+The demo supports both line-level OCR and full-page OCR with automatic line segmentation.  
+A trained checkpoint at `outputs/checkpoints/best_crnn.pth` is required to run inference.
 
 ---
 
 ## Training Pipeline
 
-Planned training workflow:
-
 ```text
 1. Prepare IAM line-level dataset
 2. Generate train / validation / test CSV files
-3. Build character vocabulary
-4. Train CRNN model with CTC Loss
-5. Evaluate using CER and WER
-6. Save best model checkpoint
-7. Use checkpoint in Streamlit demo
-```
-
-Expected checkpoint path:
-
-```text
-outputs/checkpoints/best_crnn.pth
-```
-
-Expected charset path:
-
-```text
-outputs/charset.json
+3. Train CRNN model with CTC Loss
+4. Monitor CER and WER per epoch
+5. Save best model checkpoint
+6. Use checkpoint in Streamlit demo or inference scripts
 ```
 
 ---
 
-## Evaluation Metrics
+## Configuration
 
-This project uses OCR-specific evaluation metrics.
+All training parameters are controlled from `configs/config.yaml`:
 
-| Metric | Meaning |
-|---|---|
-| CER | Character Error Rate |
-| WER | Word Error Rate |
-
-CER measures character-level mistakes.  
-WER measures word-level mistakes.
-
-Lower values are better.
-
----
-
-## Current Status
-
-Implemented:
-
-- Project structure
-- CRNN model architecture
-- Greedy CTC decoder
-- OCR metrics
-- Image preprocessing module
-- Dataset loader
-- Character vocabulary utilities
-- Streamlit interface skeleton
-
-In progress:
-
-- IAM dataset preparation script
-- Training loop
-- Evaluation script
-- Full OCR inference in the Streamlit app
-- Sample predictions and result visualization
+```yaml
+training:
+  batch_size: 16
+  epochs: 30
+  learning_rate: 0.0003
+  weight_decay: 0.00001
+  scheduler: reduce_on_plateau   # reduce_on_plateau | cosine
+```
 
 ---
 
-## Example Use Case
+## Development
 
-This project can be used as a foundation for:
+Run tests:
 
-- Digitizing handwritten notes
-- Reading handwritten forms
-- OCR systems for scanned documents
-- Document automation workflows
-- Educational OCR research projects
+```bash
+make test
+```
+
+Lint code:
+
+```bash
+make lint
+```
+
+Clean Python cache:
+
+```bash
+make clean
+```
 
 ---
 
 ## Future Improvements
 
 - Add beam search decoding
-- Add data augmentation
-- Add full-page text line segmentation
-- Add experiment tracking
-- Add model training results
-- Add sample predictions
-- Deploy the Streamlit demo online
-- Compare CRNN with transformer-based OCR models
+- Add data augmentation pipeline
+- Add experiment tracking (MLflow or Weights & Biases)
+- Add model training results and benchmarks
+- Deploy the Streamlit demo online (Streamlit Cloud or HuggingFace Spaces)
+- Compare CRNN with transformer-based OCR models (TrOCR)
 
 ---
 
@@ -274,4 +356,4 @@ Developed by [Fidan6557](https://github.com/Fidan6557)
 
 ## License
 
-This project is intended for educational and portfolio purposes.
+This project is licensed under the [MIT License](LICENSE).
