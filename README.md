@@ -1,5 +1,9 @@
 # Handwritten Text Recognition with CRNN, BiLSTM and CTC Loss
 
+[![CI](https://github.com/Fidan6557/handwritten-text-recognition-crnn/actions/workflows/ci.yml/badge.svg)](https://github.com/Fidan6557/handwritten-text-recognition-crnn/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 An end-to-end handwritten text recognition project built with PyTorch.  
 The system recognizes handwritten text line images and converts them into machine-readable text using a CRNN architecture with CNN feature extraction, BiLSTM sequence modeling, and CTC Loss.
 
@@ -216,14 +220,6 @@ pip install -r requirements.txt
 ```bash
 make train
 ```
-
-### With a custom config or scheduler
-
-```bash
-python -m src.training.train --config configs/config.yaml --scheduler cosine
-```
-
-Available scheduler options: `reduce_on_plateau` (default), `cosine`.
 
 Training will:
 1. Read all hyperparameters from `configs/config.yaml`
