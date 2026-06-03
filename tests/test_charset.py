@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 
 from src.utils.charset import BLANK_TOKEN, build_charset, load_charset, save_charset
 

@@ -1,5 +1,4 @@
 import torch
-import pytest
 
 from src.models.crnn import CRNN
 
