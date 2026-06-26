@@ -19,10 +19,11 @@ prepare-hf-iam:
 	python -m src.data.prepare_hf_iam
 
 predict-line:
-	python -m src.inference.predict
+	@if [ -z "$(IMAGE)" ]; then echo "Usage: make predict-line IMAGE=path/to/line.png"; exit 1; fi
+	python -m src.inference.predict --image "$(IMAGE)"
 
 predict-page:
-	python -m src.inference.predict_page --image sample_images/page_sample.jpg
+	python -m src.inference.predict_page --image "$(or $(IMAGE),sample_images/page_sample.jpg)"
 
 plot-metrics:
 	python -m src.visualization.plot_metrics

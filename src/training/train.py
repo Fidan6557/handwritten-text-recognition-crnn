@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 
 import torch
@@ -52,21 +53,34 @@ def train_one_epoch(model, dataloader, optimizer, criterion, device):
     return total_loss / len(dataloader)
 
 
-def main():
-    cfg = load_config("configs/config.yaml")
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train the CRNN handwriting OCR model.")
+    parser.add_argument(
+        "--config",
+        default="configs/config.yaml",
+        help="Path to the YAML training configuration.",
+    )
+    return parser.parse_args()
+
+
+def main(config_path: str = "configs/config.yaml"):
+    cfg = load_config(config_path)
 
     set_seed(cfg["project"]["seed"])
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    processed_dir = cfg["data"]["processed_dir"]
-    train_csv = f"{processed_dir}/train.csv"
-    val_csv = f"{processed_dir}/val.csv"
+    processed_dir = Path(cfg["data"]["processed_dir"])
+    train_csv = processed_dir / "train.csv"
+    val_csv = processed_dir / "val.csv"
 
     checkpoint_dir = Path(cfg["paths"]["checkpoint_dir"])
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-    charset_path = Path("outputs/charset.json")
+    best_model_path = Path(cfg["paths"]["best_model"])
+    best_model_path.parent.mkdir(parents=True, exist_ok=True)
+
+    charset_path = Path(cfg["paths"]["charset"])
     charset_path.parent.mkdir(parents=True, exist_ok=True)
 
     char_to_idx, idx_to_char = build_charset([train_csv, val_csv])
@@ -74,8 +88,21 @@ def main():
 
     batch_size = cfg["training"]["batch_size"]
 
-    train_dataset = IAMLineDataset(csv_path=train_csv, char_to_idx=char_to_idx)
-    val_dataset = IAMLineDataset(csv_path=val_csv, char_to_idx=char_to_idx)
+    image_width = cfg["data"]["image_width"]
+    image_height = cfg["data"]["image_height"]
+
+    train_dataset = IAMLineDataset(
+        csv_path=train_csv,
+        char_to_idx=char_to_idx,
+        image_width=image_width,
+        image_height=image_height,
+    )
+    val_dataset = IAMLineDataset(
+        csv_path=val_csv,
+        char_to_idx=char_to_idx,
+        image_width=image_width,
+        image_height=image_height,
+    )
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
@@ -84,6 +111,7 @@ def main():
         num_classes=len(char_to_idx),
         hidden_size=cfg["model"]["hidden_size"],
         num_lstm_layers=cfg["model"]["num_lstm_layers"],
+        dropout=cfg["model"].get("dropout", 0.3),
     ).to(device)
 
     criterion = nn.CTCLoss(blank=0, zero_infinity=True)
@@ -94,11 +122,11 @@ def main():
         weight_decay=cfg["training"]["weight_decay"],
     )
 
-    scheduler = build_scheduler(optimizer, scheduler_type="reduce_on_plateau")
-    logger = TrainingLogger(log_dir="outputs/logs")
-
     best_cer = float("inf")
     epochs = cfg["training"]["epochs"]
+    scheduler_type = cfg["training"].get("scheduler", "reduce_on_plateau")
+    scheduler = build_scheduler(optimizer, scheduler_type=scheduler_type, T_max=epochs)
+    logger = TrainingLogger(log_dir=cfg["paths"]["logs_dir"])
 
     print(f"Device: {device} | Epochs: {epochs} | Batch: {batch_size}")
 
@@ -107,7 +135,10 @@ def main():
 
         val_metrics = evaluate_model(model, val_loader, criterion, idx_to_char, device)
 
-        scheduler.step(val_metrics["cer"])
+        if scheduler_type == "reduce_on_plateau":
+            scheduler.step(val_metrics["cer"])
+        else:
+            scheduler.step()
 
         logger.log(epoch, {
             "train_loss": round(train_loss, 6),
@@ -126,12 +157,13 @@ def main():
 
         if val_metrics["cer"] < best_cer:
             best_cer = val_metrics["cer"]
-            torch.save(model.state_dict(), checkpoint_dir / "best_crnn.pth")
-            print(f"  → Best model saved (CER: {best_cer:.4f})")
+            torch.save(model.state_dict(), best_model_path)
+            print(f"  -> Best model saved (CER: {best_cer:.4f})")
 
     print(f"\nTraining complete. Best CER: {best_cer:.4f}")
     print(f"Log: {logger.get_log_path()}")
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(args.config)

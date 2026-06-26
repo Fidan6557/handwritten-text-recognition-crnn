@@ -24,6 +24,7 @@ data/processed/
 outputs/checkpoints/
 outputs/segmented_lines/
 outputs/logs/
+outputs/charset.json
 outputs/*.pth
 outputs/*.pt
 

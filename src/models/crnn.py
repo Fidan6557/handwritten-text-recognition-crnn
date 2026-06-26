@@ -10,7 +10,13 @@ class CRNN(nn.Module):
     CNN feature extractor -> BiLSTM sequence model -> Linear classifier
     """
 
-    def __init__(self, num_classes: int, hidden_size: int = 256, num_lstm_layers: int = 2):
+    def __init__(
+        self,
+        num_classes: int,
+        hidden_size: int = 256,
+        num_lstm_layers: int = 2,
+        dropout: float = 0.3,
+    ):
         super().__init__()
 
         self.cnn = nn.Sequential(
@@ -43,13 +49,15 @@ class CRNN(nn.Module):
             nn.MaxPool2d(kernel_size=(2, 1)),
         )
 
+        lstm_dropout = dropout if num_lstm_layers > 1 else 0.0
+
         self.rnn = nn.LSTM(
             input_size=512 * 4,
             hidden_size=hidden_size,
             num_layers=num_lstm_layers,
             bidirectional=True,
             batch_first=False,
-            dropout=0.3,
+            dropout=lstm_dropout,
         )
 
         self.classifier = nn.Linear(hidden_size * 2, num_classes)

@@ -251,9 +251,9 @@ make plot-metrics
 ### Single line image
 
 ```bash
-make predict-line
+make predict-line IMAGE=path/to/line.png
 # or
-python -m src.inference.predict
+python -m src.inference.predict --image path/to/line.png
 ```
 
 ### Full page image
